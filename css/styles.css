@@ -1,32 +1,38 @@
 /* ==========================================================================
    styles.css — Vitrae
    ---------------------------------------------------------------------
-   Dirección visual: catedral gótica / vitral.
-   Piedra oscura de fondo, oro de pan de oro como metal noble, y los tres
-   pigmentos clásicos del vidrio emplomado (carmesí, zafiro, esmeralda)
-   como acentos puntuales — nunca los tres juntos en el mismo elemento.
-   El arco ojival (apuntado) es la firma que se repite en botones,
-   tarjetas, marcos de imagen y el propio spinner de carga.
+   Dirección visual: catedral gótica — piedra fría bajo luz de luna,
+   metal deslucido (plata vieja, no oro) y un único acento de vino
+   tinto profundo. Una sola familia de color por función, no un
+   mosaico de vitral multicolor: la idea es que se sienta solemne y
+   fría, no decorativa.
+   El arco ojival (apuntado) sigue siendo la firma que se repite en
+   botones, tarjetas, marcos de imagen y el spinner de carga — eso no
+   cambió, solo la paleta.
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 :root {
-  /* Color — piedra, pergamino y vitral */
-  --color-bg: #14100c;              /* piedra de nave, en penumbra */
-  --color-bg-raised: #1c1610;       /* piedra un escalón más clara */
-  --color-surface: #201a13;         /* superficie de tarjetas */
-  --color-ink: #ede1c9;             /* pergamino / hueso, para texto */
-  --color-ink-soft: #a3937a;        /* pergamino envejecido, texto secundario */
-  --color-gold: #c9a15a;            /* pan de oro */
-  --color-gold-bright: #e6c37e;
-  --color-crimson: #7a1930;         /* vitral rojo */
-  --color-sapphire: #1f3a63;        /* vitral azul */
-  --color-sapphire-bright: #3f6aa8;
-  --color-border: #3a2f20;          /* junta de mortero */
-  --color-error: #d97a7a;
-  --color-error-bg: #2a1414;
-  --color-error-border: #7a1930;
+  /* Color — piedra fría, plata deslucida, vino tinto.
+     Nota: los nombres de variable (--color-gold, --color-crimson, etc.)
+     se mantienen tal cual estaban por todo el archivo para no tener
+     que tocar cientos de referencias; lo que cambió es el VALOR de
+     cada una. --color-gold ahora es plata, no oro. */
+  --color-bg: #0b0b0d;              /* piedra casi negra, fría */
+  --color-bg-raised: #141417;       /* piedra un escalón más clara */
+  --color-surface: #18181c;         /* superficie de tarjetas */
+  --color-ink: #e8e6e1;             /* blanco luz de luna, para texto */
+  --color-ink-soft: #92909a;        /* gris-lavanda apagado, texto secundario */
+  --color-gold: #a8a9b4;            /* plata deslucida (metal noble de esta paleta) */
+  --color-gold-bright: #d4d5de;
+  --color-crimson: #6e1f34;         /* vino tinto profundo — el único acento cálido */
+  --color-sapphire: #23263f;        /* índigo casi negro, de apoyo */
+  --color-sapphire-bright: #454a78;
+  --color-border: #26262c;          /* junta de mortero, fría */
+  --color-error: #d98aa0;
+  --color-error-bg: #1c1216;
+  --color-error-border: #6e1f34;
 
   /* Tipografía */
   --font-blackletter: 'UnifrakturMaguntia', var(--font-display);
@@ -37,10 +43,21 @@
   --nav-height: 72px;
   --max-width: 1200px;
   --radius: 3px;
-  --arch: path('M 0 14 C 0 6.268 6.268 0 14 0 L 14 0 C 21.732 0 28 6.268 28 14 L 28 40 L 0 40 Z');
-  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(201, 161, 90, 0.06);
-  --shadow-gold-glow: 0 0 0 1px rgba(201, 161, 90, 0.4), 0 0 18px rgba(201, 161, 90, 0.12);
+  /* Arco ojival vía border-radius (no clip-path): border-radius nunca
+     borra contenido, solo redondea la esquina — así el texto de un
+     botón o el borde de una pintura nunca quedan cortados, sin
+     importar el tamaño real del elemento.
+     --arch-btn: arco pronunciado, pensado para botones (cajas chicas).
+     --arch-frame: arco apenas insinuado en las esquinas superiores,
+     pensado para imágenes de obras — tiene que taparse lo mínimo
+     posible de la pintura. */
+  --arch-btn: 50% 50% 4px 4px / 60px 60px 4px 4px;
+  --arch-frame: 40px 40px 4px 4px / 22px 22px 4px 4px;
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(168, 169, 180, 0.06);
+  --shadow-gold-glow: 0 0 0 1px rgba(168, 169, 180, 0.4), 0 0 18px rgba(168, 169, 180, 0.12);
 }
+
+
 
 * {
   box-sizing: border-box;
@@ -48,13 +65,31 @@
 
 body {
   margin: 0;
-  background:
-    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(122, 25, 48, 0.12), transparent 60%),
-    radial-gradient(ellipse 700px 400px at 90% 10%, rgba(31, 58, 99, 0.10), transparent 55%),
-    var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-body);
   line-height: 1.6;
+
+  /* Fondo: foto real de una catedral gótica (interior de la nave de
+     la Catedral de San Vito, Praga). Fuente: Wikimedia Commons, foto
+     de DXR, licencia CC BY-SA 4.0 — atribución obligatoria, ver
+     crédito en el footer de index.html.
+     https://commons.wikimedia.org/wiki/File:Interior_of_St._Vitus_Cathedral,_Nave,_Prague_20160809_2.jpg
+     Capas de atrás hacia adelante:
+     1) la foto en sí (cover, centrada, fija al hacer scroll)
+     2) una pátina de color que la funde con la paleta del sitio
+        (si no, la foto de piedra clara/beige choca con los paneles
+        oscuros de plata y vino)
+     3) viñeta: oscurece bordes para que el contenido central respire
+        y haya contraste suficiente en los paneles semi-transparentes */
+  background-image:
+    radial-gradient(ellipse 90% 75% at 50% 30%, transparent 35%, rgba(4, 4, 6, 0.75) 100%),
+    linear-gradient(rgba(11, 11, 13, 0.72), rgba(11, 11, 13, 0.72)),
+    url('https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_St._Vitus_Cathedral,_Nave,_Prague_20160809_2.jpg?width=1920');
+  background-size: cover, cover, cover;
+  background-position: center, center, center 30%;
+  background-repeat: no-repeat;
+  background-attachment: fixed, fixed, fixed;
+  background-color: var(--color-bg); /* fallback mientras carga la foto */
 }
 
 h1, h2, h3 {
@@ -122,7 +157,7 @@ nav-bar {
   letter-spacing: 0.01em;
   text-decoration: none;
   color: var(--color-gold-bright);
-  text-shadow: 0 0 14px rgba(201, 161, 90, 0.25);
+  text-shadow: 0 0 14px rgba(168, 169, 180, 0.3);
 }
 
 .nav-brand.active {
@@ -198,7 +233,7 @@ nav-bar {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  clip-path: var(--arch);
+  border-radius: var(--arch-btn);
   transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
@@ -304,7 +339,7 @@ error-state {
   border: 1px solid var(--color-error-border);
   background: transparent;
   color: var(--color-gold-bright);
-  clip-path: var(--arch);
+  border-radius: var(--arch-btn);
   cursor: pointer;
   font-family: var(--font-display);
   font-size: 0.78rem;
@@ -344,7 +379,7 @@ error-state {
   letter-spacing: 0.01em;
   line-height: 1.15;
   color: var(--color-gold-bright);
-  text-shadow: 0 0 22px rgba(201, 161, 90, 0.18);
+  text-shadow: 0 0 22px rgba(168, 169, 180, 0.22);
 }
 
 .hero p {
@@ -410,7 +445,8 @@ error-state {
 
 .artwork-card .artwork-frame {
   position: relative;
-  clip-path: path('M 0 24 C 0 10.745 43 0 96 0 C 149 0 192 10.745 192 24 L 192 200 L 0 200 Z');
+  border-radius: var(--arch-frame);
+  overflow: hidden;
   width: 100%;
 }
 
@@ -721,7 +757,8 @@ error-state {
 }
 
 .detail-main-frame {
-  clip-path: path('M 0 32 C 0 14.327 57.308 0 128 0 C 198.692 0 256 14.327 256 32 L 256 480 L 0 480 Z');
+  border-radius: var(--arch-frame);
+  overflow: hidden;
   background: var(--color-bg-raised);
 }
 
@@ -1071,7 +1108,7 @@ error-state {
 }
 
 .compare-table tr.is-different td {
-  background: rgba(122, 25, 48, 0.14);
+  background: rgba(110, 31, 52, 0.18);
   color: var(--color-gold-bright);
 }
 
@@ -1246,7 +1283,7 @@ error-state {
 .puzzle-piece.is-selected {
   outline: 3px solid var(--color-gold-bright);
   outline-offset: -3px;
-  box-shadow: 0 0 14px rgba(230, 195, 126, 0.5);
+  box-shadow: 0 0 14px rgba(212, 213, 222, 0.55);
   z-index: 1;
   position: relative;
 }

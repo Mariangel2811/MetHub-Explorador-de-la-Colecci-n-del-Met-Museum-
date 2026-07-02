@@ -23,12 +23,18 @@
       Datos provistos por la Open Access API del Metropolitan Museum of Art.
       Esta aplicación no está afiliada al museo. Las imágenes pueden tener restricciones de uso comercial.
     </p>
+    <p class="footer-disclaimer">
+      Foto de fondo: interior de la Catedral de San Vito, Praga — © DXR,
+      <a href="https://creativecommons.org/licenses/by-sa/4.0" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>,
+      vía <a href="https://commons.wikimedia.org/wiki/File:Interior_of_St._Vitus_Cathedral,_Nave,_Prague_20160809_2.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>.
+    </p>
   </footer>
 
   <!-- Capa de datos -->
   <script src="js/api.js"></script>
 
   <!-- Componentes globales -->
+  <script src="js/components/nav-bar.js"></script>
   <script src="js/components/loading-state.js"></script>
   <script src="js/components/error-state.js"></script>
   <script src="js/components/artwork-card.js"></script>
@@ -36,10 +42,12 @@
   <!-- Vistas (cada una expone su función renderXxxView en window) -->
   <script src="js/view-helpers.js"></script>
   <script src="js/views/view-home.js"></script>
+  <script src="js/views/view-explore.js"></script>
+  <script src="js/views/view-detail.js"></script>
   <script src="js/views/view-departments.js"></script>
   <script src="js/views/view-artist.js"></script>
   <script src="js/views/view-compare.js"></script>
-  
+  <script src="js/views/view-puzzle.js"></script>
 
   <!-- Router -->
   <script src="js/router.js"></script>
