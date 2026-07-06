@@ -35,7 +35,10 @@ function renderArtistView(container, params, signal) {
 
   async function _search() {
     try {
-      const result = await MetAPI.search({ q: params.name, artistOrCulture: true }, { signal });
+      // Use a plain q search (same strategy as explore view). The artistOrCulture
+      // flag is a full-text hint in the Met API and actually reduces recall for
+      // many artists (e.g. "Lambert Suavius" returns 0 results with it on).
+      const result = await MetAPI.search({ q: params.name }, { signal });
       if (signal.aborted) return;
 
       state.allIds = result.objectIDs || [];
@@ -71,7 +74,11 @@ function renderArtistView(container, params, signal) {
     try {
       const start = (state.page - 1) * ARTIST_PAGE_SIZE;
       const pageIds = state.allIds.slice(start, start + ARTIST_PAGE_SIZE);
-      const { artworks, failedCount } = await MetAPI.resolveObjects(pageIds, { signal });
+      const { artworks: resolvedArtworks, failedCount } = await MetAPI.resolveObjects(pageIds, { signal });
+      const nameLower = params.name.toLowerCase();
+      const artworks = resolvedArtworks.filter(
+        (a) => a.artistDisplayName && a.artistDisplayName.toLowerCase().includes(nameLower)
+      );
       if (signal.aborted) return;
 
       ViewHelpers.clearElement(galleryGrid);

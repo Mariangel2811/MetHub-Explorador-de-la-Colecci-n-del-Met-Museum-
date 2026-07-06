@@ -1,4 +1,3 @@
-
 const PUZZLE_SEARCH_DEBOUNCE_MS = 400;
 const PUZZLE_SEARCH_MAX_RESULTS = 8;
 const PUZZLE_DIFFICULTIES = [
@@ -6,6 +5,9 @@ const PUZZLE_DIFFICULTIES = [
   { label: 'Medio', size: 4 },
   { label: 'Difícil', size: 5 },
 ];
+// Cuántos píxeles hay que mover el puntero antes de considerar que
+// es un arrastre y no un click.
+const PUZZLE_DRAG_THRESHOLD = 6;
 
 function renderPuzzleView(container, params, signal) {
   const backBtn = document.createElement('button');
@@ -203,6 +205,12 @@ function _renderPuzzleBoard(stage, artwork, imageSrc, size, signal) {
   let trayPieces = _shuffle([...Array(totalPieces).keys()]);
   let selected = null;
 
+  // Estado del arrastre en curso (null cuando no se está arrastrando nada).
+  let dragState = null;
+  // Evita que el "click" que el navegador dispara después de un
+  // arrastre vuelva a disparar también la selección a 2 clicks.
+  let suppressNextClick = false;
+
   const header = document.createElement('div');
   header.className = 'puzzle-header';
 
@@ -272,13 +280,20 @@ function _renderPuzzleBoard(stage, artwork, imageSrc, size, signal) {
     };
   }
 
-  function _buildPieceEl(pieceIndex, extraClass) {
+  function _buildPieceEl(pieceIndex, extraClass, dragInfo) {
     const el = document.createElement('div');
     el.className = `puzzle-piece ${extraClass || ''}`.trim();
     Object.assign(el.style, _pieceStyle(pieceIndex));
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
     el.setAttribute('aria-label', `Pieza ${pieceIndex + 1}`);
+
+    if (dragInfo) {
+      el.style.touchAction = 'none';
+      el.style.cursor = 'grab';
+      el.addEventListener('pointerdown', (e) => _onPieceGrabStart(e, el, pieceIndex, dragInfo));
+    }
+
     return el;
   }
 
@@ -293,14 +308,18 @@ function _renderPuzzleBoard(stage, artwork, imageSrc, size, signal) {
     boardState.forEach((pieceIndex, slotIndex) => {
       const slot = document.createElement('div');
       slot.className = 'puzzle-slot';
+      slot.dataset.slotIndex = String(slotIndex);
 
       if (pieceIndex !== null) {
         const isSelected = selected && selected.origin === 'board' && selected.slotIndex === slotIndex;
-        const piece = _buildPieceEl(pieceIndex, isSelected ? 'is-selected' : '');
+        const piece = _buildPieceEl(pieceIndex, isSelected ? 'is-selected' : '', { origin: 'board', slotIndex });
         slot.appendChild(piece);
       }
 
-      const activate = () => _onSlotClick(slotIndex);
+      const activate = () => {
+        if (suppressNextClick) return;
+        _onSlotClick(slotIndex);
+      };
       slot.addEventListener('click', activate);
       slot.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -328,8 +347,11 @@ function _renderPuzzleBoard(stage, artwork, imageSrc, size, signal) {
 
     trayPieces.forEach((pieceIndex) => {
       const isSelected = selected && selected.origin === 'tray' && selected.pieceIndex === pieceIndex;
-      const piece = _buildPieceEl(pieceIndex, isSelected ? 'is-selected' : '');
-      piece.addEventListener('click', () => _onTrayPieceClick(pieceIndex));
+      const piece = _buildPieceEl(pieceIndex, isSelected ? 'is-selected' : '', { origin: 'tray' });
+      piece.addEventListener('click', () => {
+        if (suppressNextClick) return;
+        _onTrayPieceClick(pieceIndex);
+      });
       piece.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -386,6 +408,130 @@ function _renderPuzzleBoard(stage, artwork, imageSrc, size, signal) {
       }
     }
 
+    _renderAll();
+  }
+
+  // --- Arrastre dinámico (pointer events) ---
+  // Si el puntero apenas se mueve, no hacemos nada especial y dejamos
+  // que el "click" nativo dispare la selección a 2 clicks de arriba.
+  // Si el puntero se mueve más allá del umbral, tomamos el control:
+  // mostramos una pieza "fantasma" seguiendo el cursor y, al soltar,
+  // resolvemos el drop contra la celda/bandeja que esté debajo.
+
+  function _onPieceGrabStart(e, el, pieceIndex, dragInfo) {
+    if (e.button !== undefined && e.button !== 0) return; // solo botón principal / touch
+
+    const rect = el.getBoundingClientRect();
+    dragState = {
+      pieceIndex,
+      origin: dragInfo.origin,
+      slotIndex: dragInfo.slotIndex,
+      el,
+      startX: e.clientX,
+      startY: e.clientY,
+      width: rect.width,
+      height: rect.height,
+      dragging: false,
+      ghost: null,
+    };
+
+    window.addEventListener('pointermove', _onPointerMove, { passive: false });
+    window.addEventListener('pointerup', _onPointerUp);
+    window.addEventListener('pointercancel', _onPointerUp);
+  }
+
+  function _onPointerMove(e) {
+    if (!dragState) return;
+
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+
+    if (!dragState.dragging) {
+      if (Math.abs(dx) < PUZZLE_DRAG_THRESHOLD && Math.abs(dy) < PUZZLE_DRAG_THRESHOLD) return;
+
+      // Recién ahora confirmamos que es un arrastre, no un click.
+      dragState.dragging = true;
+      selected = null; // un arrastre reemplaza cualquier selección previa
+      dragState.el.style.opacity = '0.25';
+      dragState.el.style.cursor = 'grabbing';
+
+      const ghost = dragState.el.cloneNode(true);
+      ghost.classList.remove('is-selected');
+      ghost.style.opacity = '0.9';
+      ghost.style.position = 'fixed';
+      ghost.style.left = '0px';
+      ghost.style.top = '0px';
+      ghost.style.width = `${dragState.width}px`;
+      ghost.style.height = `${dragState.height}px`;
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '9999';
+      ghost.style.willChange = 'transform';
+      document.body.appendChild(ghost);
+      dragState.ghost = ghost;
+    }
+
+    e.preventDefault();
+    dragState.ghost.style.transform =
+      `translate3d(${e.clientX - dragState.width / 2}px, ${e.clientY - dragState.height / 2}px, 0)`;
+  }
+
+  function _onPointerUp(e) {
+    window.removeEventListener('pointermove', _onPointerMove);
+    window.removeEventListener('pointerup', _onPointerUp);
+    window.removeEventListener('pointercancel', _onPointerUp);
+
+    if (!dragState) return;
+    const { pieceIndex, origin, slotIndex, el, ghost, dragging } = dragState;
+    dragState = null;
+
+    if (ghost) ghost.remove();
+    if (el) {
+      el.style.opacity = '';
+      el.style.cursor = 'grab';
+    }
+
+    if (!dragging) return; // fue un click rápido: el evento "click" nativo ya se encarga
+
+    // Evitamos que el "click" que dispara el navegador justo después
+    // de este pointerup reabra la selección a 2 clicks.
+    suppressNextClick = true;
+    setTimeout(() => { suppressNextClick = false; }, 0);
+
+    const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+    const slotEl = dropTarget && dropTarget.closest('.puzzle-slot');
+    const trayEl = dropTarget && dropTarget.closest('.puzzle-tray');
+    const data = { pieceIndex, origin, slotIndex };
+
+    if (slotEl && board.contains(slotEl)) {
+      _handleDropOnSlot(data, Number(slotEl.dataset.slotIndex));
+    } else if (trayEl) {
+      _handleDropOnTray(data);
+    }
+    // Si se soltó fuera de cualquier destino válido, la pieza
+    // simplemente vuelve a su lugar (no cambiamos el estado).
+  }
+
+  function _handleDropOnSlot(data, slotIndex) {
+    if (data.origin === 'tray') {
+      const occupant = boardState[slotIndex];
+      trayPieces = trayPieces.filter((p) => p !== data.pieceIndex);
+      if (occupant !== null) trayPieces.push(occupant);
+      boardState[slotIndex] = data.pieceIndex;
+    } else if (data.origin === 'board') {
+      if (data.slotIndex === slotIndex) return; // soltada sobre sí misma
+      const occupant = boardState[slotIndex];
+      boardState[slotIndex] = data.pieceIndex;
+      boardState[data.slotIndex] = occupant; // swap si el slot ya estaba ocupado
+    }
+    selected = null;
+    _renderAll();
+  }
+
+  function _handleDropOnTray(data) {
+    if (data.origin !== 'board') return; // ya estaba en la bandeja
+    boardState[data.slotIndex] = null;
+    trayPieces.push(data.pieceIndex);
+    selected = null;
     _renderAll();
   }
 
